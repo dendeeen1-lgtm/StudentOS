@@ -15,16 +15,8 @@ workflows:
           echo "FIREBASE_STORAGE_BUCKET=$FIREBASE_STORAGE_BUCKET" >> .env
           echo "FIREBASE_MESSAGING_SENDER_ID=$FIREBASE_MESSAGING_SENDER_ID" >> .env
           echo "FIREBASE_APP_ID=$FIREBASE_APP_ID" >> .env
-      - name: Write google-services.json to root
-        script: |
-          echo $GOOGLE_SERVICES_JSON | tr -d ' ' | base64 -d > $CM_BUILD_DIR/google-services.json
       - name: Prebuild Android
         script: npx expo prebuild --platform android --clean
-      - name: Overwrite google-services.json after prebuild
-        script: |
-          echo $GOOGLE_SERVICES_JSON | tr -d ' ' | base64 -d > $CM_BUILD_DIR/android/app/google-services.json
-          echo "--- Verifying google-services.json ---"
-          cat $CM_BUILD_DIR/android/app/google-services.json
       - name: Build APK
         script: |
           cd android
