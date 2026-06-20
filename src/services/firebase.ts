@@ -3,18 +3,15 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
-// Replace these values with your Firebase project config
-// from Firebase Console > Project Settings > Your Apps > SDK setup
 const firebaseConfig = {
-  apiKey: process.env.FIREBASE_API_KEY || 'YOUR_API_KEY',
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN || 'YOUR_AUTH_DOMAIN',
-  projectId: process.env.FIREBASE_PROJECT_ID || 'YOUR_PROJECT_ID',
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'YOUR_STORAGE_BUCKET',
-  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || 'YOUR_SENDER_ID',
-  appId: process.env.FIREBASE_APP_ID || 'YOUR_APP_ID',
+  apiKey: "AIzaSyDsPtV0N-Xy2wy3HWlFXsXUWDUwYfvPAQ4",
+  authDomain: "studentos-cb295.firebaseapp.com",
+  projectId: "studentos-cb295",
+  storageBucket: "studentos-cb295.firebasestorage.app",
+  messagingSenderId: "241866357875",
+  appId: "1:241866357875:android:de18a90c37bf5e27933e06",
 };
 
-// Prevent re-initialization on hot reload
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 export const auth = getAuth(app);
