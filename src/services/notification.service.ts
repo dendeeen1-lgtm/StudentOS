@@ -108,3 +108,23 @@ export const sendPushToAdvisers = async (
     ),
   });
 };
+
+export const sendPushToStudent = async (
+  studentUid: string,
+  title: string,
+  body: string
+) => {
+  const { getDocs, query, collection, where } = await import('firebase/firestore');
+  const { db } = await import('./firebase');
+  const snap = await getDocs(
+    query(collection(db, 'users'), where('__name__', '==', studentUid))
+  );
+  if (snap.empty) return;
+  const token = snap.docs[0].data().fcmToken;
+  if (!token) return;
+  await fetch('https://exp.host/--/api/v2/push/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ to: token, title, body, sound: 'default' }),
+  });
+};

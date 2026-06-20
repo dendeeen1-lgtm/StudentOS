@@ -1,23 +1,83 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Animated,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert,
+  TextInput, Dimensions, FlatList, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 import { Colors, FontSize, FontWeight, SessionState, AttendanceStatus } from '../../constants';
 import { Button, Card, Badge, Avatar, SectionHeader, Divider, LoadingOverlay } from '../../components/common';
-import { FadeInView, PulseView, SlideUpSheet } from '../../components/animations';
+import { FadeInView, PulseView, ScalePress } from '../../components/animations';
 import { useSession, useRoster, usePendingExcused } from '../../hooks/useSession';
 import { startSession, pauseSession, resumeSession, endSession, createSession } from '../../services/session.service';
 import { autoMarkAbsent } from '../../services/attendance.service';
 import { approveExcusedRequest, denyExcusedRequest } from '../../services/excused.service';
 import { QRType } from '../../constants';
 
+const { width, height } = Dimensions.get('window');
+
+// ─── Full Screen QR Modal ─────────────────────────────────────────────────────
+const FullScreenQR: React.FC<{
+  visible: boolean;
+  onClose: () => void;
+  presentPayload: string;
+  excusedPayload: string;
+}> = ({ visible, onClose, presentPayload, excusedPayload }) => {
+  const [index, setIndex] = useState(0);
+  const qrs = [
+    { label: 'Present', color: Colors.present, payload: presentPayload },
+    { label: 'Excused', color: Colors.excused, payload: excusedPayload },
+  ];
+
+  return (
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <View style={qrStyles.container}>
+        <TouchableOpacity style={qrStyles.closeBtn} onPress={onClose}>
+          <Text style={qrStyles.closeText}>✕ Close</Text>
+        </TouchableOpacity>
+
+        <View style={qrStyles.tabs}>
+          {qrs.map((q, i) => (
+            <TouchableOpacity
+              key={q.label}
+              style={[qrStyles.tab, index === i && { borderBottomColor: q.color, borderBottomWidth: 2 }]}
+              onPress={() => setIndex(i)}
+            >
+              <Text style={[qrStyles.tabText, { color: index === i ? q.color : Colors.textTertiary }]}>
+                {q.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <View style={qrStyles.qrWrap}>
+          <Text style={[qrStyles.qrLabel, { color: qrs[index].color }]}>{qrs[index].label} QR</Text>
+          <View style={qrStyles.qrBox}>
+            {qrs[index].payload ? (
+              <QRCode
+                value={qrs[index].payload}
+                size={width * 0.75}
+                backgroundColor={Colors.white}
+                color={Colors.black}
+              />
+            ) : (
+              <Text style={{ color: Colors.textTertiary }}>No session active</Text>
+            )}
+          </View>
+          <Text style={qrStyles.qrHint}>Show this to students to scan</Text>
+          <Text style={qrStyles.qrSwipe}>← Swipe tabs to switch QR →</Text>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 // ─── Adviser Home ─────────────────────────────────────────────────────────────
 export const AdviserHomeScreen: React.FC<{ navigation: any; profile: any }> = ({ navigation, profile }) => {
   const { session } = useSession(profile?.sectionId);
   const { roster } = useRoster(session?.id);
   const { requests } = usePendingExcused(profile?.sectionId);
+  const [showQR, setShowQR] = useState(false);
 
   const presentCount = roster.filter((r) => r.status === AttendanceStatus.PRESENT).length;
   const lateCount = roster.filter((r) => r.status === AttendanceStatus.LATE).length;
@@ -32,6 +92,15 @@ export const AdviserHomeScreen: React.FC<{ navigation: any; profile: any }> = ({
             <Text style={styles.name}>{profile?.fullName?.split(' ')[0] ?? 'Adviser'}</Text>
           </View>
           <Avatar name={profile?.fullName ?? 'A'} size={44} />
+        </FadeInView>
+
+        {/* Section join code — always visible */}
+        <FadeInView delay={50}>
+          <Card style={styles.joinCodeCard}>
+            <Text style={styles.joinCodeLabel}>Section join code</Text>
+            <Text style={styles.joinCodeValue}>{profile?.joinCode ?? profile?.sectionId ?? '—'}</Text>
+            <Text style={styles.joinCodeHint}>Share this with your students so they can join</Text>
+          </Card>
         </FadeInView>
 
         {session ? (
@@ -54,7 +123,10 @@ export const AdviserHomeScreen: React.FC<{ navigation: any; profile: any }> = ({
                   </View>
                 ))}
               </View>
-              <Button label="Open session manager" onPress={() => navigation.navigate('SessionManager')} size="sm" variant="secondary" />
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <Button label="Show QR" onPress={() => setShowQR(true)} size="sm" style={{ flex: 1 }} />
+                <Button label="Session" onPress={() => navigation.navigate('SessionManager')} size="sm" variant="secondary" style={{ flex: 1 }} />
+              </View>
             </Card>
           </FadeInView>
         ) : (
@@ -99,6 +171,13 @@ export const AdviserHomeScreen: React.FC<{ navigation: any; profile: any }> = ({
           </View>
         </FadeInView>
       </ScrollView>
+
+      <FullScreenQR
+        visible={showQR}
+        onClose={() => setShowQR(false)}
+        presentPayload={session?.qrPayloadPresent ?? ''}
+        excusedPayload={session?.qrPayloadExcused ?? ''}
+      />
     </SafeAreaView>
   );
 };
@@ -111,7 +190,7 @@ export const SessionManagerScreen: React.FC<{ navigation: any; profile: any }> =
   const [sessionName, setSessionName] = useState('Morning attendance');
   const [presentWindow, setPresentWindow] = useState(10);
   const [duration, setDuration] = useState(60);
-  const [activeQR, setActiveQR] = useState<QRType | null>(null);
+  const [showQR, setShowQR] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -129,6 +208,9 @@ export const SessionManagerScreen: React.FC<{ navigation: any; profile: any }> =
   };
 
   const handleStart = async () => {
+    if (!sessionName.trim()) { Alert.alert('Required', 'Please enter a session name.'); return; }
+    if (presentWindow < 1 || presentWindow > 60) { Alert.alert('Invalid', 'Present window must be between 1 and 60 minutes.'); return; }
+    if (duration < 5 || duration > 300) { Alert.alert('Invalid', 'Duration must be between 5 and 300 minutes.'); return; }
     setWorking(true);
     try {
       const id = await createSession(profile.sectionId, profile.uid, {
@@ -136,13 +218,14 @@ export const SessionManagerScreen: React.FC<{ navigation: any; profile: any }> =
       });
       await startSession(id, profile.sectionId, duration);
       setElapsed(0);
+      setShowQR(true);
     } catch (e: any) { Alert.alert('Error', e.message); }
     setWorking(false);
   };
 
   const handleEnd = async () => {
     if (!session) return;
-    Alert.alert('End session?', 'Students who haven\'t scanned will be marked Absent.', [
+    Alert.alert('End session?', 'Students who have not scanned will be marked Absent.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'End session', style: 'destructive', onPress: async () => {
@@ -184,13 +267,15 @@ export const SessionManagerScreen: React.FC<{ navigation: any; profile: any }> =
                 <Button label="Start session" onPress={handleStart} loading={working} style={{ flex: 1 }} />
               ) : isActive ? (
                 <>
+                  <Button label="Show QR" onPress={() => setShowQR(true)} style={{ flex: 1 }} />
                   <Button label="Pause" onPress={async () => { setWorking(true); await pauseSession(session.id); setWorking(false); }} variant="secondary" style={{ flex: 1 }} loading={working} />
-                  <Button label="End session" onPress={handleEnd} variant="danger" style={{ flex: 1 }} loading={working} />
+                  <Button label="End" onPress={handleEnd} variant="danger" style={{ flex: 1 }} loading={working} />
                 </>
               ) : isPaused ? (
                 <>
+                  <Button label="Show QR" onPress={() => setShowQR(true)} style={{ flex: 1 }} />
                   <Button label="Resume" onPress={async () => { setWorking(true); await resumeSession(session.id); setWorking(false); }} style={{ flex: 1 }} loading={working} />
-                  <Button label="End session" onPress={handleEnd} variant="danger" style={{ flex: 1 }} />
+                  <Button label="End" onPress={handleEnd} variant="danger" style={{ flex: 1 }} />
                 </>
               ) : (
                 <Button label="New session" onPress={handleStart} style={{ flex: 1 }} />
@@ -199,60 +284,53 @@ export const SessionManagerScreen: React.FC<{ navigation: any; profile: any }> =
           </Card>
         </FadeInView>
 
-        {session && (isActive || isPaused) && (
-          <FadeInView delay={200}>
-            <SectionHeader title="QR codes" />
-            <View style={styles.qrRow}>
-              {([
-                { type: QRType.PRESENT, label: 'Present', color: Colors.present, payload: session.qrPayloadPresent },
-                { type: QRType.EXCUSED, label: 'Excused', color: Colors.excused, payload: session.qrPayloadExcused },
-                { type: QRType.OUTSIDE, label: 'Outside', color: Colors.outside, payload: session.qrPayloadOutside },
-              ] as const).map(({ type, label, color, payload }) => (
-                <Card key={type} onPress={() => setActiveQR(activeQR === type ? null : type)} style={[styles.qrCard, activeQR === type && { borderColor: color }]}>
-                  <Text style={[styles.qrLabel, { color }]}>{label}</Text>
-                  {activeQR === type && payload ? (
-                    <View style={styles.qrCodeWrap}>
-                      <QRCode value={payload} size={120} backgroundColor={Colors.backgroundCard} color={Colors.textPrimary} />
-                    </View>
-                  ) : (
-                    <View style={[styles.qrPlaceholder, { borderColor: color + '40' }]}>
-                      <Text style={{ color: Colors.textTertiary, fontSize: FontSize.xs }}>Tap to show</Text>
-                    </View>
-                  )}
-                </Card>
-              ))}
-            </View>
-          </FadeInView>
-        )}
-
+        {/* Settings — only show when no active session */}
         {!session && (
           <FadeInView delay={200}>
             <SectionHeader title="Session settings" />
             <Card>
               <Text style={styles.settingLabel}>Session name</Text>
-              <View style={styles.settingInput}>
-                <Text style={styles.settingValue}>{sessionName}</Text>
-              </View>
+              <TextInput
+                style={styles.settingInput}
+                value={sessionName}
+                onChangeText={setSessionName}
+                placeholder="e.g. Morning attendance"
+                placeholderTextColor={Colors.textTertiary}
+              />
               <Divider />
-              <View style={styles.settingRow}>
-                <View>
-                  <Text style={styles.settingLabel}>Present window</Text>
-                  <Text style={styles.settingHint}>Scans within = Present</Text>
-                </View>
-                <Text style={styles.settingValue}>{presentWindow} min</Text>
-              </View>
+              <Text style={styles.settingLabel}>Present window (minutes)</Text>
+              <Text style={styles.settingHint}>Students who scan within this time = Present. After = Late.</Text>
+              <TextInput
+                style={styles.settingInput}
+                value={String(presentWindow)}
+                onChangeText={(v) => setPresentWindow(parseInt(v) || 10)}
+                keyboardType="numeric"
+                placeholder="10"
+                placeholderTextColor={Colors.textTertiary}
+              />
               <Divider />
-              <View style={styles.settingRow}>
-                <View>
-                  <Text style={styles.settingLabel}>Session duration</Text>
-                  <Text style={styles.settingHint}>Auto-ends after</Text>
-                </View>
-                <Text style={styles.settingValue}>{duration} min</Text>
-              </View>
+              <Text style={styles.settingLabel}>Session duration (minutes)</Text>
+              <Text style={styles.settingHint}>Session auto-ends after this time.</Text>
+              <TextInput
+                style={styles.settingInput}
+                value={String(duration)}
+                onChangeText={(v) => setDuration(parseInt(v) || 60)}
+                keyboardType="numeric"
+                placeholder="60"
+                placeholderTextColor={Colors.textTertiary}
+              />
             </Card>
           </FadeInView>
         )}
       </ScrollView>
+
+      <FullScreenQR
+        visible={showQR}
+        onClose={() => setShowQR(false)}
+        presentPayload={session?.qrPayloadPresent ?? ''}
+        excusedPayload={session?.qrPayloadExcused ?? ''}
+      />
+
       <LoadingOverlay visible={loading} message="Loading session..." />
     </SafeAreaView>
   );
@@ -276,29 +354,25 @@ export const LiveRosterScreen: React.FC<{ navigation: any; profile: any }> = ({ 
 
         {!session ? (
           <Card style={styles.noSessionCard}>
-            <Text style={styles.noSessionText}>No active session to show roster for.</Text>
+            <Text style={styles.noSessionText}>No active session.</Text>
           </Card>
+        ) : roster.length === 0 ? (
+          <Card><Text style={styles.noSessionText}>No scans yet.</Text></Card>
         ) : (
-          <FadeInView delay={100}>
-            {roster.length === 0 ? (
-              <Card><Text style={styles.noSessionText}>No scans yet.</Text></Card>
-            ) : (
-              roster.map((record, i) => (
-                <FadeInView key={record.id} delay={i * 40}>
-                  <Card style={styles.rosterRow}>
-                    <Avatar name={record.studentName} size={38} />
-                    <View style={{ flex: 1, marginLeft: 12 }}>
-                      <Text style={styles.rosterName}>{record.studentName}</Text>
-                      <Text style={styles.rosterTime}>
-                        {record.scannedAt ? new Date(record.scannedAt as any).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Auto-marked'}
-                      </Text>
-                    </View>
-                    <Badge status={record.status} />
-                  </Card>
-                </FadeInView>
-              ))
-            )}
-          </FadeInView>
+          roster.map((record, i) => (
+            <FadeInView key={record.id} delay={i * 40}>
+              <Card style={styles.rosterRow}>
+                <Avatar name={record.studentName} size={38} />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.rosterName}>{record.studentName}</Text>
+                  <Text style={styles.rosterTime}>
+                    {record.scannedAt ? new Date(record.scannedAt as any).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Auto-marked'}
+                  </Text>
+                </View>
+                <Badge status={record.status} />
+              </Card>
+            </FadeInView>
+          ))
         )}
       </ScrollView>
       <LoadingOverlay visible={loading} message="Loading roster..." />
@@ -310,14 +384,17 @@ export const LiveRosterScreen: React.FC<{ navigation: any; profile: any }> = ({ 
 export const ExcusedReviewScreen: React.FC<{ navigation: any; profile: any; route: any }> = ({ navigation, profile, route }) => {
   const { requests } = usePendingExcused(profile?.sectionId);
   const [working, setWorking] = useState<string | null>(null);
-  const reqFromRoute = route.params?.request;
+  const reqFromRoute = route?.params?.request;
   const displayList = reqFromRoute ? [reqFromRoute] : requests;
 
   const handle = async (req: any, approve: boolean) => {
     setWorking(req.id);
     try {
-      if (approve) await approveExcusedRequest(req.id, req.attendanceRecordId, profile.uid);
-      else await denyExcusedRequest(req.id, req.attendanceRecordId, profile.uid);
+      if (approve) {
+        await approveExcusedRequest(req.id, req.attendanceRecordId, profile.uid);
+      } else {
+        await denyExcusedRequest(req.id, req.attendanceRecordId, profile.uid);
+      }
     } catch (e: any) { Alert.alert('Error', e.message); }
     setWorking(null);
   };
@@ -346,13 +423,19 @@ export const ExcusedReviewScreen: React.FC<{ navigation: any; profile: any; rout
                   <Badge status="pending" />
                 </View>
                 <Divider />
-                <Text style={styles.settingLabel}>Explanation</Text>
+                <Text style={styles.settingLabel}>Reason</Text>
                 <Text style={styles.explanation}>{req.explanation}</Text>
                 <Divider />
                 <Text style={styles.settingLabel}>Excuse letter</Text>
-                <View style={styles.photoPlaceholder}>
-                  <Text style={{ color: Colors.textTertiary, fontSize: FontSize.sm }}>Photo attached — view in image viewer</Text>
+                <View style={styles.letterBox}>
+                  <Text style={styles.letterText}>{req.excuseLetter ?? 'No letter provided.'}</Text>
                 </View>
+                <Divider />
+                <Card style={styles.approveNoteCard}>
+                  <Text style={styles.approveNoteText}>
+                    If approved, the student will be notified to bring a printed and signed copy of their excuse letter to class.
+                  </Text>
+                </Card>
                 <View style={styles.btnRow}>
                   <Button label="Deny" onPress={() => handle(req, false)} variant="danger" style={{ flex: 1 }} loading={working === req.id} />
                   <Button label="Approve" onPress={() => handle(req, true)} style={{ flex: 1 }} loading={working === req.id} />
@@ -366,6 +449,22 @@ export const ExcusedReviewScreen: React.FC<{ navigation: any; profile: any; rout
   );
 };
 
+// ─── QR Styles ────────────────────────────────────────────────────────────────
+const qrStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.background, paddingTop: 50 },
+  closeBtn: { position: 'absolute', top: 16, right: 16, zIndex: 10, padding: 8 },
+  closeText: { color: Colors.textSecondary, fontSize: FontSize.base },
+  tabs: { flexDirection: 'row', justifyContent: 'center', gap: 32, marginBottom: 32, marginTop: 16 },
+  tab: { paddingBottom: 8, paddingHorizontal: 16 },
+  tabText: { fontSize: FontSize.md, fontWeight: FontWeight.semibold },
+  qrWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  qrLabel: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, marginBottom: 24 },
+  qrBox: { backgroundColor: Colors.white, padding: 20, borderRadius: 20 },
+  qrHint: { color: Colors.textSecondary, fontSize: FontSize.sm, marginTop: 24 },
+  qrSwipe: { color: Colors.textTertiary, fontSize: FontSize.xs, marginTop: 8 },
+});
+
+// ─── Main Styles ──────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   scroll: { flexGrow: 1, paddingHorizontal: 16, paddingBottom: 40 },
@@ -374,6 +473,10 @@ const styles = StyleSheet.create({
   name: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.textPrimary },
   back: { color: Colors.primaryLight, fontSize: FontSize.base, marginRight: 12 },
   screenTitle: { flex: 1, fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.textPrimary },
+  joinCodeCard: { marginBottom: 12, alignItems: 'center', paddingVertical: 20 },
+  joinCodeLabel: { fontSize: FontSize.xs, color: Colors.textTertiary, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6 },
+  joinCodeValue: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, color: Colors.primaryLight, letterSpacing: 4 },
+  joinCodeHint: { fontSize: FontSize.xs, color: Colors.textTertiary, marginTop: 6 },
   sessionCard: { marginBottom: 16, gap: 12 },
   sessionActive: { borderColor: Colors.present + '60' },
   sessionRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -393,20 +496,26 @@ const styles = StyleSheet.create({
   timerCard: { alignItems: 'center', gap: 8, paddingVertical: 24 },
   timerDisplay: { fontSize: 48, fontWeight: FontWeight.bold, color: Colors.textPrimary, letterSpacing: -1 },
   timerLabel: { fontSize: FontSize.sm, color: Colors.textSecondary },
-  btnRow: { flexDirection: 'row', gap: 10, marginTop: 8, width: '100%' },
-  qrRow: { flexDirection: 'row', gap: 10 },
-  qrCard: { flex: 1, alignItems: 'center', gap: 8 },
-  qrLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
-  qrCodeWrap: { alignItems: 'center' },
-  qrPlaceholder: { width: 80, height: 80, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  settingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  btnRow: { flexDirection: 'row', gap: 8, marginTop: 8, width: '100%' },
   settingLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, color: Colors.textSecondary, marginBottom: 4 },
-  settingHint: { fontSize: FontSize.xs, color: Colors.textTertiary },
-  settingValue: { fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: Colors.textPrimary },
-  settingInput: { paddingVertical: 4 },
+  settingHint: { fontSize: FontSize.xs, color: Colors.textTertiary, marginBottom: 8 },
+  settingInput: {
+    backgroundColor: Colors.backgroundInput,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: FontSize.base,
+    color: Colors.textPrimary,
+    marginBottom: 4,
+  },
   rosterRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   rosterName: { fontSize: FontSize.base, fontWeight: FontWeight.medium, color: Colors.textPrimary },
   rosterTime: { fontSize: FontSize.xs, color: Colors.textTertiary, marginTop: 2 },
   explanation: { fontSize: FontSize.base, color: Colors.textPrimary, lineHeight: 22, marginBottom: 4 },
-  photoPlaceholder: { backgroundColor: Colors.backgroundElevated, borderRadius: 10, padding: 16, alignItems: 'center', marginBottom: 12 },
+  letterBox: { backgroundColor: Colors.backgroundElevated, borderRadius: 10, padding: 14, marginBottom: 4 },
+  letterText: { fontSize: FontSize.base, color: Colors.textPrimary, lineHeight: 22 },
+  approveNoteCard: { backgroundColor: Colors.presentSurface, borderColor: Colors.present, marginBottom: 12 },
+  approveNoteText: { fontSize: FontSize.sm, color: Colors.present, lineHeight: 20 },
 });

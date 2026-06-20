@@ -200,7 +200,7 @@ export const ScanScreen: React.FC<{ navigation: any; profile: any }> = ({ naviga
 };
 
 // ─── Excused Form ─────────────────────────────────────────────────────────────
-export const ExcusedFormScreen: React.FC<{ navigation: any; profile: any; route: any }> = ({ navigation, profile, route }) => {
+// ExcusedFormScreen moved to ExcusedFormScreen.tsx
   const { payload, session } = route.params;
   const [explanation, setExplanation] = useState('');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -467,3 +467,4 @@ const styles = StyleSheet.create({
   profileLabel: { fontSize: FontSize.sm, color: Colors.textSecondary },
   profileValue: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, color: Colors.textPrimary, maxWidth: '60%', textAlign: 'right' },
 });
+export { ExcusedFormScreen } from './ExcusedFormScreen';

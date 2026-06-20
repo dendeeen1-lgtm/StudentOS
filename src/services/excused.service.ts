@@ -93,3 +93,35 @@ export const getStudentExcusedRequests = async (
   );
   return snap.docs.map((d) => ({ id: d.id, ...d.data() })) as ExcusedRequest[];
 };
+
+export const approveExcusedRequestWithNotification = async (
+  requestId: string,
+  attendanceRecordId: string,
+  studentUid: string,
+  reviewedBy: string,
+  note?: string
+) => {
+  await approveExcusedRequest(requestId, attendanceRecordId, reviewedBy, note);
+  const { sendPushToStudent } = await import('./notification.service');
+  await sendPushToStudent(
+    studentUid,
+    'Excuse request approved',
+    'Your excuse request was approved. Please bring a printed copy of your excuse letter with your teacher signature to class.'
+  );
+};
+
+export const denyExcusedRequestWithNotification = async (
+  requestId: string,
+  attendanceRecordId: string,
+  studentUid: string,
+  reviewedBy: string,
+  note?: string
+) => {
+  await denyExcusedRequest(requestId, attendanceRecordId, reviewedBy, note);
+  const { sendPushToStudent } = await import('./notification.service');
+  await sendPushToStudent(
+    studentUid,
+    'Excuse request denied',
+    'Your excuse request was denied. Your status has been marked Absent.'
+  );
+};
