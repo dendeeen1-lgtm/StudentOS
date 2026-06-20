@@ -30,6 +30,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const goRegister = () => {
     if (role === UserRole.PARENT) navigation.navigate('RegisterParent');
+    else if (role === UserRole.ADVISER) navigation.navigate('RegisterAdviser');
     else navigation.navigate('RegisterStudent', { role });
   };
 
@@ -220,3 +221,7 @@ const styles = StyleSheet.create({
   pendingSub: { fontSize: FontSize.base, color: Colors.textSecondary, textAlign: 'center', lineHeight: 24 },
   pendingHint: { fontSize: FontSize.sm, color: Colors.textTertiary, textAlign: 'center', marginTop: 12 },
 });
+// Export RegisterAdviserScreen
+export { RegisterAdviserScreen } from './RegisterAdviserScreen';
+// Export RegisterAdviserScreen
+export { RegisterAdviserScreen } from './RegisterAdviserScreen';

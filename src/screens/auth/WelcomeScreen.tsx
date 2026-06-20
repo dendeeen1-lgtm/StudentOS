@@ -1,17 +1,13 @@
 import React, { useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, Animated, Dimensions, TouchableOpacity,
+  View, Text, StyleSheet, Animated, Dimensions, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, FontSize, FontWeight, UserRole } from '../../constants';
 import { FadeInView, ScalePress } from '../../components/animations';
-import Svg, { Circle, Path, G, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { Circle, Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 
 const { width } = Dimensions.get('window');
-
-interface Props {
-  navigation: any;
-}
 
 const RoleCard: React.FC<{
   icon: React.ReactNode;
@@ -34,7 +30,7 @@ const RoleCard: React.FC<{
   </FadeInView>
 );
 
-export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
+export const WelcomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const logoScale = useRef(new Animated.Value(0.6)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
 
@@ -45,35 +41,35 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
     ]).start();
   }, []);
 
-  const go = (role: UserRole) =>
-    navigation.navigate('Login', { role });
+  const go = (role: UserRole) => navigation.navigate('Login', { role });
 
   return (
     <SafeAreaView style={styles.container}>
-      <FadeInView style={styles.header}>
-        <Animated.View style={[styles.logoWrap, { transform: [{ scale: logoScale }], opacity: logoOpacity }]}>
-          <Svg width={64} height={64} viewBox="0 0 64 64">
-            <Defs>
-              <LinearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
-                <Stop offset="0" stopColor="#6B5DD3" />
-                <Stop offset="1" stopColor="#3D2FA9" />
-              </LinearGradient>
-            </Defs>
-            <Circle cx="32" cy="32" r="32" fill="url(#grad)" />
-            <Path d="M20 24h24M20 32h16M20 40h20" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
-            <Circle cx="46" cy="40" r="6" fill="#22C55E" />
-            <Path d="M43 40l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </Svg>
-        </Animated.View>
-        <FadeInView delay={200}>
-          <Text style={styles.appName}>StudentOS</Text>
-          <Text style={styles.tagline}>Section attendance, simplified.</Text>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <FadeInView style={styles.header}>
+          <Animated.View style={[styles.logoWrap, { transform: [{ scale: logoScale }], opacity: logoOpacity }]}>
+            <Svg width={64} height={64} viewBox="0 0 64 64">
+              <Defs>
+                <LinearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
+                  <Stop offset="0" stopColor="#6B5DD3" />
+                  <Stop offset="1" stopColor="#3D2FA9" />
+                </LinearGradient>
+              </Defs>
+              <Circle cx="32" cy="32" r="32" fill="url(#grad)" />
+              <Path d="M20 24h24M20 32h16M20 40h20" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+              <Circle cx="46" cy="40" r="6" fill="#22C55E" />
+              <Path d="M43 40l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
+          </Animated.View>
+          <FadeInView delay={200}>
+            <Text style={styles.appName}>StudentOS</Text>
+            <Text style={styles.tagline}>Section attendance, simplified.</Text>
+          </FadeInView>
         </FadeInView>
-      </FadeInView>
 
-      <FadeInView delay={400} style={styles.body}>
-        <Text style={styles.chooseLabel}>Who are you?</Text>
-        <View style={styles.roleGrid}>
+        <FadeInView delay={400} style={styles.body}>
+          <Text style={styles.chooseLabel}>Who are you?</Text>
+
           <View style={styles.roleRow}>
             <RoleCard
               delay={500}
@@ -91,7 +87,7 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
             <RoleCard
               delay={550}
               color={Colors.outside}
-              title="Monitor"
+              title="Class Monitor"
               subtitle="Co-manage the section"
               onPress={() => go(UserRole.MONITOR)}
               icon={
@@ -103,12 +99,13 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
               }
             />
           </View>
+
           <View style={styles.roleRow}>
             <RoleCard
               delay={600}
               color={Colors.present}
               title="Student"
-              subtitle="Scan & track attendance"
+              subtitle="Scan and track attendance"
               onPress={() => go(UserRole.STUDENT)}
               icon={
                 <Svg width={28} height={28} viewBox="0 0 24 24">
@@ -130,73 +127,36 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
               }
             />
           </View>
-        </View>
-      </FadeInView>
+        </FadeInView>
 
-      <FadeInView delay={800} style={styles.footer}>
-        <Text style={styles.footerText}>
-          Already have an account?{' '}
-          <Text
-            style={styles.footerLink}
-            onPress={() => navigation.navigate('Login', { role: null })}
-          >
-            Sign in
+        <FadeInView delay={800} style={styles.footer}>
+          <Text style={styles.footerText}>
+            Already have an account?{' '}
+            <Text style={styles.footerLink} onPress={() => navigation.navigate('Login', { role: null })}>
+              Sign in
+            </Text>
           </Text>
-        </Text>
-      </FadeInView>
+        </FadeInView>
+      </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+  scroll: { flexGrow: 1, paddingHorizontal: 20, paddingBottom: 32 },
   header: { alignItems: 'center', paddingTop: 32, paddingBottom: 16 },
   logoWrap: { marginBottom: 16 },
-  appName: {
-    fontSize: FontSize.xxl,
-    fontWeight: FontWeight.bold,
-    color: Colors.textPrimary,
-    letterSpacing: -0.5,
-    textAlign: 'center',
-  },
-  tagline: {
-    fontSize: FontSize.base,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  body: { flex: 1, paddingHorizontal: 20 },
-  chooseLabel: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
-    color: Colors.textTertiary,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    marginBottom: 14,
-  },
-  roleGrid: { gap: 10 },
-  roleRow: { flexDirection: 'row', gap: 10 },
-  roleCard: {
-    flex: 1,
-    backgroundColor: Colors.backgroundCard,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    alignItems: 'center',
-    gap: 8,
-  },
+  appName: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, color: Colors.textPrimary, letterSpacing: -0.5, textAlign: 'center' },
+  tagline: { fontSize: FontSize.base, color: Colors.textSecondary, textAlign: 'center', marginTop: 4 },
+  body: { flex: 1 },
+  chooseLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.textTertiary, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 14 },
+  roleRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
+  roleCard: { flex: 1, backgroundColor: Colors.backgroundCard, borderRadius: 16, borderWidth: 1, padding: 16, alignItems: 'center', gap: 8 },
   roleIconWrap: { borderRadius: 12, padding: 10 },
-  roleTitle: {
-    fontSize: FontSize.base,
-    fontWeight: FontWeight.semibold,
-    color: Colors.textPrimary,
-  },
-  roleSub: {
-    fontSize: FontSize.xs,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-  },
-  footer: { paddingBottom: 20, alignItems: 'center' },
+  roleTitle: { fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: Colors.textPrimary },
+  roleSub: { fontSize: FontSize.xs, color: Colors.textSecondary, textAlign: 'center' },
+  footer: { paddingBottom: 8, alignItems: 'center', marginTop: 8 },
   footerText: { fontSize: FontSize.sm, color: Colors.textTertiary },
   footerLink: { color: Colors.primaryLight, fontWeight: FontWeight.semibold },
 });
