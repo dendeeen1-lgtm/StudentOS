@@ -1,92 +1,22 @@
 workflows:
-
-  # ── Android APK (free, no accounts needed beyond Firebase + GitHub) ──────────
   android-workflow:
     name: StudentOS Android
     max_build_duration: 60
     environment:
       node: 20.14.0
-      groups:
-        - firebase_credentials  # set these in Codemagic Environment Variables
-    triggering:
-      events:
-        - push
-      branch_patterns:
-        - pattern: main
     scripts:
       - name: Install dependencies
         script: npm install
       - name: Write google-services.json
         script: echo $GOOGLE_SERVICES_JSON | base64 --decode > $CM_BUILD_DIR/google-services.json
-      - name: Write .env
-        script: |
-          echo "FIREBASE_API_KEY=$FIREBASE_API_KEY" >> .env
-          echo "FIREBASE_AUTH_DOMAIN=$FIREBASE_AUTH_DOMAIN" >> .env
-          echo "FIREBASE_PROJECT_ID=$FIREBASE_PROJECT_ID" >> .env
-          echo "FIREBASE_STORAGE_BUCKET=$FIREBASE_STORAGE_BUCKET" >> .env
-          echo "FIREBASE_MESSAGING_SENDER_ID=$FIREBASE_MESSAGING_SENDER_ID" >> .env
-          echo "FIREBASE_APP_ID=$FIREBASE_APP_ID" >> .env
       - name: Prebuild Android
         script: npx expo prebuild --platform android --clean
-      - name: Build APK (debug — no signing needed)
+      - name: Build APK
         script: |
           cd android
           ./gradlew assembleDebug
     artifacts:
       - android/app/build/outputs/**/*.apk
-    publishing:
-      email:
-        recipients:
-          - your@email.com
-        notify:
-          success: true
-          failure: true
-
-  # ── iOS IPA (free Apple ID — install on your own device via AltStore/Sideloadly) ──
-  ios-workflow:
-    name: StudentOS iOS (Free Apple ID)
-    max_build_duration: 60
-    environment:
-      node: 20.14.0
-      xcode: latest
-      cocoapods: default
-      groups:
-        - firebase_credentials
-        - apple_id_credentials   # APPLE_ID + APPLE_ID_PASSWORD in Codemagic
-    scripts:
-      - name: Install dependencies
-        script: npm install
-      - name: Write .env
-        script: |
-          echo "FIREBASE_API_KEY=$FIREBASE_API_KEY" >> .env
-          echo "FIREBASE_AUTH_DOMAIN=$FIREBASE_AUTH_DOMAIN" >> .env
-          echo "FIREBASE_PROJECT_ID=$FIREBASE_PROJECT_ID" >> .env
-          echo "FIREBASE_STORAGE_BUCKET=$FIREBASE_STORAGE_BUCKET" >> .env
-          echo "FIREBASE_MESSAGING_SENDER_ID=$FIREBASE_MESSAGING_SENDER_ID" >> .env
-          echo "FIREBASE_APP_ID=$FIREBASE_APP_ID" >> .env
-      - name: Write GoogleService-Info.plist
-        script: echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > $CM_BUILD_DIR/ios/studentos/GoogleService-Info.plist
-      - name: Prebuild iOS
-        script: npx expo prebuild --platform ios --clean
-      - name: Install CocoaPods
-        script: cd ios && pod install
-      - name: Build unsigned IPA
-        script: |
-          xcodebuild \
-            -workspace ios/studentos.xcworkspace \
-            -scheme studentos \
-            -configuration Debug \
-            -sdk iphoneos \
-            -derivedDataPath build \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            build
-          mkdir -p build/ipa
-          cp -r build/Build/Products/Debug-iphoneos/studentos.app build/ipa/
-          cd build/ipa && zip -r StudentOS.ipa studentos.app
-    artifacts:
-      - build/ipa/StudentOS.ipa
     publishing:
       email:
         recipients:
