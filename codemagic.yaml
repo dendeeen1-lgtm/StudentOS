@@ -18,9 +18,13 @@ workflows:
       - name: Write google-services.json to root
         script: |
           echo $GOOGLE_SERVICES_JSON | tr -d ' ' | base64 -d > $CM_BUILD_DIR/google-services.json
-          cat $CM_BUILD_DIR/google-services.json
       - name: Prebuild Android
         script: npx expo prebuild --platform android --clean
+      - name: Overwrite google-services.json after prebuild
+        script: |
+          echo $GOOGLE_SERVICES_JSON | tr -d ' ' | base64 -d > $CM_BUILD_DIR/android/app/google-services.json
+          echo "--- Verifying google-services.json ---"
+          cat $CM_BUILD_DIR/android/app/google-services.json
       - name: Build APK
         script: |
           cd android
