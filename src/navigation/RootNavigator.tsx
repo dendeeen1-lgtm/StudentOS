@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler';
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -7,7 +8,8 @@ import Svg, { Path, Circle } from 'react-native-svg';
 import { Colors, FontSize, FontWeight, UserRole } from '../constants';
 import { useAuth } from '../hooks/useAuth';
 import { WelcomeScreen } from '../screens/auth/WelcomeScreen';
-import { LoginScreen, RegisterStudentScreen, RegisterParentScreen, PendingApprovalScreen, RegisterAdviserScreen } from '../screens/auth/AuthScreens';
+import { LoginScreen, RegisterStudentScreen, RegisterParentScreen, PendingApprovalScreen } from '../screens/auth/AuthScreens';
+import { RegisterAdviserScreen } from '../screens/auth/RegisterAdviserScreen';
 import { AdviserHomeScreen, SessionManagerScreen, LiveRosterScreen, ExcusedReviewScreen } from '../screens/adviser/AdviserScreens';
 import { StudentHomeScreen, ScanScreen, ExcusedFormScreen, HistoryScreen, ParentLinkScreen, StudentProfileScreen } from '../screens/student/StudentScreens';
 import { ParentHomeScreen, ChildHistoryScreen, LinkChildScreen, ParentProfileScreen } from '../screens/parent/ParentScreens';
@@ -129,9 +131,8 @@ const AuthNavigator = () => (
     <Stack.Screen name="Login" component={LoginScreen} />
     <Stack.Screen name="RegisterStudent" component={RegisterStudentScreen} />
     <Stack.Screen name="RegisterParent" component={RegisterParentScreen} />
+    <Stack.Screen name="RegisterAdviser" component={RegisterAdviserScreen} />
     <Stack.Screen name="PendingApproval" component={PendingApprovalScreen} />
-    <Stack.Screen name="RegisterAdviser" component={RegisterAdviserScreen} />
-    <Stack.Screen name="RegisterAdviser" component={RegisterAdviserScreen} />
   </Stack.Navigator>
 );
 
@@ -181,8 +182,6 @@ export const RootNavigator: React.FC = () => {
       return (
         <Stack.Navigator screenOptions={screenOptions}>
           <Stack.Screen name="PendingApproval" component={PendingApprovalScreen} />
-    <Stack.Screen name="RegisterAdviser" component={RegisterAdviserScreen} />
-    <Stack.Screen name="RegisterAdviser" component={RegisterAdviserScreen} />
         </Stack.Navigator>
       );
     }
