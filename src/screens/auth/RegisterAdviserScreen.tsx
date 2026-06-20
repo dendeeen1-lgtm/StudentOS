@@ -8,8 +8,9 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../../services/firebase';
 
-// Secret code the adviser must enter to prove they are the real adviser
-const ADVISER_SECRET_CODE = 'ADVISER2024';
+// Your private adviser code — only YOU know this
+// Do NOT share this with students or parents
+const ADVISER_SECRET = 'SOS-ADV-2024-PRIVATE';
 
 interface Props { navigation: any; }
 
@@ -24,6 +25,7 @@ export const RegisterAdviserScreen: React.FC<Props> = ({ navigation }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showCode, setShowCode] = useState(false);
 
   const set = (key: string) => (val: string) => setForm((f) => ({ ...f, [key]: val }));
 
@@ -34,8 +36,8 @@ export const RegisterAdviserScreen: React.FC<Props> = ({ navigation }) => {
       setError('Please fill in all fields.'); return;
     }
 
-    if (secretCode.trim().toUpperCase() !== ADVISER_SECRET_CODE) {
-      setError('Invalid adviser code. Ask your school admin for the correct code.'); return;
+    if (secretCode.trim() !== ADVISER_SECRET) {
+      setError('Incorrect adviser code. This code is private and only for the section adviser.'); return;
     }
 
     setLoading(true); setError('');
@@ -43,9 +45,8 @@ export const RegisterAdviserScreen: React.FC<Props> = ({ navigation }) => {
       const result = await createUserWithEmailAndPassword(auth, email, password);
       const uid = result.user.uid;
 
-      // Generate a section join code for students
       const joinCode = sectionName.replace(/\s+/g, '').toUpperCase().substring(0, 4) +
-        Math.random().toString(36).substring(2, 6).toUpperCase();
+        '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
 
       await setDoc(doc(db, 'users', uid), {
         uid,
@@ -70,8 +71,8 @@ export const RegisterAdviserScreen: React.FC<Props> = ({ navigation }) => {
       });
 
       Alert.alert(
-        'Account created!',
-        `Your section join code is: ${joinCode}\n\nShare this with your students so they can join your section.`,
+        'Adviser account created!',
+        `Your section join code is:\n\n${joinCode}\n\nShare this with your students only. Keep your adviser code private.`,
         [{ text: 'Got it!' }]
       );
     } catch (e: any) {
@@ -89,10 +90,16 @@ export const RegisterAdviserScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={styles.backText}>← Back</Text>
             </TouchableOpacity>
             <Text style={styles.title}>Adviser registration</Text>
-            <Text style={styles.sub}>Create your section and adviser account</Text>
+            <Text style={styles.sub}>This account is for section advisers only</Text>
           </FadeInView>
 
-          <FadeInView delay={150} style={styles.form}>
+          <FadeInView delay={150}>
+            <Card style={styles.warningCard}>
+              <Text style={styles.warningText}>
+                This registration requires a private adviser code. This code is only known by the section adviser and should never be shared with students or parents.
+              </Text>
+            </Card>
+
             {error ? (
               <Card style={styles.errorCard}>
                 <Text style={styles.errorText}>{error}</Text>
@@ -106,13 +113,16 @@ export const RegisterAdviserScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.divider} />
 
             <Input
-              label="Adviser secret code"
+              label="Private adviser code"
               value={form.secretCode}
               onChangeText={set('secretCode')}
-              placeholder="Enter the adviser code"
-              autoCapitalize="characters"
+              placeholder="Enter your private code"
+              secureTextEntry={!showCode}
+              autoCapitalize="none"
             />
-            <Text style={styles.hint}>Ask your school admin for the adviser code. Default is ADVISER2024</Text>
+            <TouchableOpacity onPress={() => setShowCode(!showCode)} style={styles.showBtn}>
+              <Text style={styles.showBtnText}>{showCode ? 'Hide code' : 'Show code'}</Text>
+            </TouchableOpacity>
 
             <View style={styles.divider} />
 
@@ -135,10 +145,12 @@ const styles = StyleSheet.create({
   backText: { color: Colors.primaryLight, fontSize: FontSize.base },
   title: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.textPrimary, marginBottom: 4 },
   sub: { fontSize: FontSize.base, color: Colors.textSecondary },
-  form: { gap: 0 },
-  btn: { marginTop: 8 },
-  divider: { height: 0.5, backgroundColor: Colors.border, marginVertical: 16 },
+  warningCard: { backgroundColor: Colors.lateSurface, borderColor: Colors.late, marginBottom: 16 },
+  warningText: { fontSize: FontSize.sm, color: Colors.late, lineHeight: 20 },
   errorCard: { backgroundColor: Colors.absentSurface, borderColor: Colors.absent, marginBottom: 16 },
   errorText: { color: Colors.absent, fontSize: FontSize.sm },
-  hint: { fontSize: FontSize.xs, color: Colors.textTertiary, marginTop: -10, marginBottom: 16 },
+  divider: { height: 0.5, backgroundColor: Colors.border, marginVertical: 16 },
+  btn: { marginTop: 8 },
+  showBtn: { marginTop: -10, marginBottom: 8 },
+  showBtnText: { color: Colors.primaryLight, fontSize: FontSize.sm },
 });
