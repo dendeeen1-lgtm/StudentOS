@@ -1,18 +1,16 @@
 import 'react-native-gesture-handler';
-import React from 'react';
+import React, { Component } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text } from 'react-native';
+import { Colors } from './src/constants';
 import { RootNavigator } from './src/navigation/RootNavigator';
-import { Colors, FontSize, FontWeight } from './src/constants';
 
-interface ErrorBoundaryState { hasError: boolean; error?: string; }
-
-class ErrorBoundary extends React.Component<{ children: React.ReactNode }, ErrorBoundaryState> {
+class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean; error: string }> {
   constructor(props: any) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, error: '' };
   }
   static getDerivedStateFromError(error: any) {
     return { hasError: true, error: error?.message ?? 'Unknown error' };
@@ -20,15 +18,9 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, Error
   render() {
     if (this.state.hasError) {
       return (
-        <View style={errStyles.container}>
-          <Text style={errStyles.title}>Something went wrong</Text>
-          <Text style={errStyles.sub}>{this.state.error}</Text>
-          <TouchableOpacity
-            style={errStyles.btn}
-            onPress={() => this.setState({ hasError: false })}
-          >
-            <Text style={errStyles.btnText}>Try again</Text>
-          </TouchableOpacity>
+        <View style={{ flex: 1, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <Text style={{ color: Colors.textPrimary, fontSize: 18, fontWeight: '600', marginBottom: 12 }}>Something went wrong</Text>
+          <Text style={{ color: Colors.textSecondary, fontSize: 13, textAlign: 'center' }}>{this.state.error}</Text>
         </View>
       );
     }
@@ -36,22 +28,16 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, Error
   }
 }
 
-const errStyles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center', padding: 32 },
-  title: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.textPrimary, marginBottom: 12, textAlign: 'center' },
-  sub: { fontSize: FontSize.sm, color: Colors.textSecondary, textAlign: 'center', marginBottom: 24, lineHeight: 20 },
-  btn: { backgroundColor: Colors.primary, paddingVertical: 12, paddingHorizontal: 32, borderRadius: 12 },
-  btnText: { color: Colors.white, fontWeight: FontWeight.semibold, fontSize: FontSize.base },
-});
-
 export default function App() {
   return (
     <ErrorBoundary>
       <GestureHandlerRootView style={styles.root}>
-        <SafeAreaProvider>
-          <StatusBar style="light" backgroundColor="transparent" translucent />
-          <RootNavigator />
-        </SafeAreaProvider>
+        <View style={styles.bg}>
+          <SafeAreaProvider>
+            <StatusBar style="light" backgroundColor={Colors.background} translucent={false} />
+            <RootNavigator />
+          </SafeAreaProvider>
+        </View>
       </GestureHandlerRootView>
     </ErrorBoundary>
   );
@@ -59,4 +45,5 @@ export default function App() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  bg: { flex: 1, backgroundColor: Colors.background },
 });
