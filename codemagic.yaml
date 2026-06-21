@@ -51,11 +51,15 @@ workflows:
         script: npx expo prebuild --platform ios --clean
       - name: Install CocoaPods
         script: cd ios && pod install
+      - name: Get iOS scheme name
+        script: xcodebuild -list -workspace ios/studentos.xcworkspace | grep -A5 "Schemes"
       - name: Build iOS unsigned IPA
         script: |
+          SCHEME=$(xcodebuild -list -workspace ios/studentos.xcworkspace | grep -A5 "Schemes" | grep -v "Schemes:" | head -1 | xargs)
+          echo "Using scheme: $SCHEME"
           xcodebuild \
             -workspace ios/studentos.xcworkspace \
-            -scheme studentos \
+            -scheme "$SCHEME" \
             -configuration Release \
             -sdk iphoneos \
             -derivedDataPath build \
@@ -63,9 +67,12 @@ workflows:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             build
+          APP_PATH=$(find build/Build/Products -name "*.app" | head -1)
+          echo "App path: $APP_PATH"
           mkdir -p build/ipa
-          cp -r build/Build/Products/Release-iphoneos/studentos.app build/ipa/
-          cd build/ipa && zip -r StudentOS.ipa studentos.app
+          cp -r "$APP_PATH" build/ipa/
+          APP_NAME=$(basename "$APP_PATH")
+          cd build/ipa && zip -r StudentOS.ipa "$APP_NAME"
     artifacts:
       - android/app/build/outputs/**/*.apk
       - build/ipa/StudentOS.ipa
