@@ -51,8 +51,6 @@ workflows:
         script: npx expo prebuild --platform ios --clean
       - name: Install CocoaPods
         script: cd ios && pod install
-      - name: Get iOS scheme name
-        script: xcodebuild -list -workspace ios/studentos.xcworkspace | grep -A5 "Schemes"
       - name: Build iOS unsigned IPA
         script: |
           SCHEME=$(xcodebuild -list -workspace ios/studentos.xcworkspace | grep -A5 "Schemes" | grep -v "Schemes:" | head -1 | xargs)
@@ -67,12 +65,22 @@ workflows:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             build
-          APP_PATH=$(find build/Build/Products -name "*.app" | head -1)
-          echo "App path: $APP_PATH"
+          echo "--- Listing build products ---"
+          find build/Build/Products -type d -name "*.app" 2>/dev/null
+          echo "--- All files in Release-iphoneos ---"
+          ls build/Build/Products/Release-iphoneos/ 2>/dev/null || echo "Release-iphoneos not found"
           mkdir -p build/ipa
-          cp -r "$APP_PATH" build/ipa/
+          APP_PATH=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -type d -name "*.app" 2>/dev/null | head -1)
+          echo "App path found: $APP_PATH"
+          if [ -z "$APP_PATH" ]; then
+            echo "ERROR: No .app found"
+            exit 1
+          fi
           APP_NAME=$(basename "$APP_PATH")
+          echo "App name: $APP_NAME"
+          cp -r "$APP_PATH" build/ipa/
           cd build/ipa && zip -r StudentOS.ipa "$APP_NAME"
+          echo "IPA created successfully"
     artifacts:
       - android/app/build/outputs/**/*.apk
       - build/ipa/StudentOS.ipa
