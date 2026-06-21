@@ -1,33 +1,49 @@
 workflows:
-  android-release:
-    name: StudentOS Android Release
-    max_build_duration: 60
+  studentos-release:
+    name: StudentOS — Android & iOS Release
+    max_build_duration: 90
     environment:
       node: 20.14.0
     scripts:
       - name: Install dependencies
         script: npm install
-      - name: Write .env
+
+      - name: Write Firebase config
         script: |
-          echo "FIREBASE_API_KEY=$FIREBASE_API_KEY" >> .env
-          echo "FIREBASE_AUTH_DOMAIN=$FIREBASE_AUTH_DOMAIN" >> .env
-          echo "FIREBASE_PROJECT_ID=$FIREBASE_PROJECT_ID" >> .env
-          echo "FIREBASE_STORAGE_BUCKET=$FIREBASE_STORAGE_BUCKET" >> .env
-          echo "FIREBASE_MESSAGING_SENDER_ID=$FIREBASE_MESSAGING_SENDER_ID" >> .env
-          echo "FIREBASE_APP_ID=$FIREBASE_APP_ID" >> .env
+          cat > src/services/firebase.ts << 'EOF'
+          import { initializeApp, getApps, getApp } from 'firebase/app';
+          import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+          import { getFirestore } from 'firebase/firestore';
+          import { getStorage } from 'firebase/storage';
+          import AsyncStorage from '@react-native-async-storage/async-storage';
+          const firebaseConfig = {
+            apiKey: "AIzaSyDsPtV0N-Xy2wy3HWlFXsXUWDUwYfvPAQ4",
+            authDomain: "studentos-cb295.firebaseapp.com",
+            projectId: "studentos-cb295",
+            storageBucket: "studentos-cb295.firebasestorage.app",
+            messagingSenderId: "241866357875",
+            appId: "1:241866357875:android:de18a90c37bf5e27933e06",
+          };
+          const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+          export const auth = getApps().length === 1
+            ? initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) })
+            : require('firebase/auth').getAuth(app);
+          export const db = getFirestore(app);
+          export const storage = getStorage(app);
+          export default app;
+          EOF
+
+      - name: Write google-services.json
+        script: |
+          echo $GOOGLE_SERVICES_JSON | tr -d ' ' | base64 -d > $CM_BUILD_DIR/google-services.json
+
       - name: Prebuild Android
         script: npx expo prebuild --platform android --clean
-      - name: Generate keystore
+
+      - name: Copy google-services.json after prebuild
         script: |
-          keytool -genkeypair -v \
-            -keystore $CM_BUILD_DIR/studentos.keystore \
-            -alias studentos \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -storepass studentos123 \
-            -keypass studentos123 \
-            -dname "CN=StudentOS, OU=App, O=StudentOS, L=Manila, S=NCR, C=PH"
+          echo $GOOGLE_SERVICES_JSON | tr -d ' ' | base64 -d > $CM_BUILD_DIR/android/app/google-services.json
+
       - name: Bundle JS
         script: |
           mkdir -p android/app/src/main/assets
@@ -37,64 +53,58 @@ workflows:
             --entry-file index.js \
             --bundle-output android/app/src/main/assets/index.android.bundle \
             --assets-dest android/app/src/main/res
-      - name: Build Release APK
+
+      - name: Build Android APK
         script: |
           cd android
           ./gradlew assembleRelease \
-            -Pandroid.injected.signing.store.file=$CM_BUILD_DIR/studentos.keystore \
-            -Pandroid.injected.signing.store.password=studentos123 \
-            -Pandroid.injected.signing.key.alias=studentos \
-            -Pandroid.injected.signing.key.password=studentos123
-    artifacts:
-      - android/app/build/outputs/**/*.apk
-    publishing:
-      email:
-        recipients:
-          - your@email.com
-        notify:
-          success: true
-          failure: true
+            -Dorg.gradle.jvmargs="-Xmx4g" \
+            -PenableProguardInReleaseBuilds=false \
+            -PenableHermes=true
 
-  ios-release:
-    name: StudentOS iOS Release
-    max_build_duration: 60
-    environment:
-      node: 20.14.0
-      xcode: latest
-      cocoapods: default
-    scripts:
-      - name: Install dependencies
-        script: npm install
-      - name: Write .env
-        script: |
-          echo "FIREBASE_API_KEY=$FIREBASE_API_KEY" >> .env
-          echo "FIREBASE_AUTH_DOMAIN=$FIREBASE_AUTH_DOMAIN" >> .env
-          echo "FIREBASE_PROJECT_ID=$FIREBASE_PROJECT_ID" >> .env
-          echo "FIREBASE_STORAGE_BUCKET=$FIREBASE_STORAGE_BUCKET" >> .env
-          echo "FIREBASE_MESSAGING_SENDER_ID=$FIREBASE_MESSAGING_SENDER_ID" >> .env
-          echo "FIREBASE_APP_ID=$FIREBASE_APP_ID" >> .env
-      - name: Prebuild iOS
-        script: npx expo prebuild --platform ios --clean
-      - name: Install CocoaPods
-        script: cd ios && pod install
-      - name: Build unsigned IPA
-        script: |
-          xcodebuild \
-            -workspace ios/studentos.xcworkspace \
-            -scheme studentos \
-            -configuration Release \
-            -sdk iphoneos \
-            -derivedDataPath build \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            build
-          mkdir -p build/ipa
-          cp -r build/Build/Products/Release-iphoneos/studentos.app build/ipa/
-          cd build/ipa && zip -r StudentOS.ipa studentos.app
     artifacts:
-      - build/ipa/StudentOS.ipa
+      - android/app/build/outputs/apk/release/app-release.apk
+
     publishing:
+      github_releases:
+        prerelease: false
+        artifact_patterns:
+          - android/app/build/outputs/apk/release/app-release.apk
+        release_draft: false
+        tag_name: v$BUILD_NUMBER
+        name: StudentOS v$BUILD_NUMBER
+        description: |
+          ## StudentOS v$BUILD_NUMBER
+
+          Section-level QR attendance app for students, parents, advisers, and class monitors.
+
+          ### What's in this release
+          - QR code attendance scanning (Present, Late, Excused)
+          - Real-time live roster for adviser and monitor
+          - Excused request form with text letter and approval flow
+          - Parent linking via unique one-time code
+          - Push notifications for parents on every status change
+          - Session manager with editable settings and full screen QR
+          - Attendance history and streak tracker for students
+          - Permanent login — stay signed in across app restarts
+          - Animated loading screen and smooth transitions
+
+          ### How to install
+          1. Download **app-release.apk** below
+          2. Open it on your Android phone
+          3. Tap Install (allow unknown sources if prompted)
+
+          ### Roles
+          - **Adviser** — create section, manage sessions, approve students
+          - **Class Monitor** — same access as adviser
+          - **Student** — scan QR, submit excused requests, view history
+          - **Parent** — receive push notifications, view child attendance
+
+          ### Notes
+          - First time opening may take a few seconds to load
+          - Make sure you have internet connection on first launch
+          - Adviser code required for adviser registration
+
       email:
         recipients:
           - your@email.com
