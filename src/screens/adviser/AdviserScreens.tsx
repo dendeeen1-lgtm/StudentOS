@@ -124,7 +124,7 @@ export const AdviserHomeScreen: React.FC<{ navigation: any; profile: any }> = ({
                 ))}
               </View>
               <View style={{ flexDirection: 'row', gap: 8 }}>
-                <Button label="Show QR" onPress={() => setShowQR(true)} size="sm" style={{ flex: 1 }} />
+                <Button label="QR" size="sm" onPress={() => setShowQR(true)} style={{ flex: 1 }} />
                 <Button label="Session" onPress={() => navigation.navigate('SessionManager')} size="sm" variant="secondary" style={{ flex: 1 }} />
               </View>
             </Card>
@@ -267,15 +267,15 @@ export const SessionManagerScreen: React.FC<{ navigation: any; profile: any }> =
                 <Button label="Start session" onPress={handleStart} loading={working} style={{ flex: 1 }} />
               ) : isActive ? (
                 <>
-                  <Button label="Show QR" onPress={() => setShowQR(true)} style={{ flex: 1 }} />
-                  <Button label="Pause" onPress={async () => { setWorking(true); await pauseSession(session.id); setWorking(false); }} variant="secondary" style={{ flex: 1 }} loading={working} />
-                  <Button label="End" onPress={handleEnd} variant="danger" style={{ flex: 1 }} loading={working} />
+                  <Button label="QR" size="sm" onPress={() => setShowQR(true)} style={{ flex: 1 }} />
+                  <Button label="Pause" size="sm" onPress={async () => { setWorking(true); await pauseSession(session.id); setWorking(false); }} variant="secondary" style={{ flex: 1 }} loading={working} />
+                  <Button label="End" size="sm" onPress={handleEnd} variant="danger" style={{ flex: 1 }} loading={working} />
                 </>
               ) : isPaused ? (
                 <>
-                  <Button label="Show QR" onPress={() => setShowQR(true)} style={{ flex: 1 }} />
-                  <Button label="Resume" onPress={async () => { setWorking(true); await resumeSession(session.id); setWorking(false); }} style={{ flex: 1 }} loading={working} />
-                  <Button label="End" onPress={handleEnd} variant="danger" style={{ flex: 1 }} />
+                  <Button label="QR" size="sm" onPress={() => setShowQR(true)} style={{ flex: 1 }} />
+                  <Button label="Resume" size="sm" onPress={async () => { setWorking(true); await resumeSession(session.id); setWorking(false); }} style={{ flex: 1 }} loading={working} />
+                  <Button label="End" size="sm" onPress={handleEnd} variant="danger" style={{ flex: 1 }} />
                 </>
               ) : (
                 <Button label="New session" onPress={handleStart} style={{ flex: 1 }} />
@@ -302,8 +302,8 @@ export const SessionManagerScreen: React.FC<{ navigation: any; profile: any }> =
               <Text style={styles.settingHint}>Students who scan within this time = Present. After = Late.</Text>
               <TextInput
                 style={styles.settingInput}
-                value={String(presentWindow)}
-                onChangeText={(v) => setPresentWindow(parseInt(v) || 10)}
+                value={presentWindow === 0 ? "" : String(presentWindow)}
+                onChangeText={(v) => setPresentWindow(parseInt(v) || 0)}
                 keyboardType="numeric"
                 placeholder="10"
                 placeholderTextColor={Colors.textTertiary}
@@ -313,8 +313,8 @@ export const SessionManagerScreen: React.FC<{ navigation: any; profile: any }> =
               <Text style={styles.settingHint}>Session auto-ends after this time.</Text>
               <TextInput
                 style={styles.settingInput}
-                value={String(duration)}
-                onChangeText={(v) => setDuration(parseInt(v) || 60)}
+                value={duration === 0 ? "" : String(duration)}
+                onChangeText={(v) => setDuration(parseInt(v) || 0)}
                 keyboardType="numeric"
                 placeholder="60"
                 placeholderTextColor={Colors.textTertiary}
