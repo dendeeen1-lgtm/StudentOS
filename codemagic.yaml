@@ -1,9 +1,11 @@
 workflows:
-  android-release:
-    name: StudentOS Android Release
-    max_build_duration: 60
+  studentos-release:
+    name: StudentOS Release (Android + iOS)
+    max_build_duration: 120
     environment:
       node: 20.14.0
+      xcode: latest
+      cocoapods: default
     scripts:
       - name: Install dependencies
         script: npm install
@@ -28,7 +30,7 @@ workflows:
             -storepass studentos123 \
             -keypass studentos123 \
             -dname "CN=StudentOS, OU=App, O=StudentOS, L=Manila, S=NCR, C=PH"
-      - name: Bundle JS
+      - name: Bundle JS for Android
         script: |
           mkdir -p android/app/src/main/assets
           npx react-native bundle \
@@ -37,7 +39,7 @@ workflows:
             --entry-file index.js \
             --bundle-output android/app/src/main/assets/index.android.bundle \
             --assets-dest android/app/src/main/res
-      - name: Build Release APK
+      - name: Build Android Release APK
         script: |
           cd android
           ./gradlew assembleRelease \
@@ -45,39 +47,11 @@ workflows:
             -Pandroid.injected.signing.store.password=studentos123 \
             -Pandroid.injected.signing.key.alias=studentos \
             -Pandroid.injected.signing.key.password=studentos123
-    artifacts:
-      - android/app/build/outputs/**/*.apk
-    publishing:
-      email:
-        recipients:
-          - your@email.com
-        notify:
-          success: true
-          failure: true
-
-  ios-release:
-    name: StudentOS iOS Release
-    max_build_duration: 60
-    environment:
-      node: 20.14.0
-      xcode: latest
-      cocoapods: default
-    scripts:
-      - name: Install dependencies
-        script: npm install
-      - name: Write .env
-        script: |
-          echo "FIREBASE_API_KEY=$FIREBASE_API_KEY" >> .env
-          echo "FIREBASE_AUTH_DOMAIN=$FIREBASE_AUTH_DOMAIN" >> .env
-          echo "FIREBASE_PROJECT_ID=$FIREBASE_PROJECT_ID" >> .env
-          echo "FIREBASE_STORAGE_BUCKET=$FIREBASE_STORAGE_BUCKET" >> .env
-          echo "FIREBASE_MESSAGING_SENDER_ID=$FIREBASE_MESSAGING_SENDER_ID" >> .env
-          echo "FIREBASE_APP_ID=$FIREBASE_APP_ID" >> .env
       - name: Prebuild iOS
         script: npx expo prebuild --platform ios --clean
       - name: Install CocoaPods
         script: cd ios && pod install
-      - name: Build unsigned IPA
+      - name: Build iOS unsigned IPA
         script: |
           xcodebuild \
             -workspace ios/studentos.xcworkspace \
@@ -93,6 +67,7 @@ workflows:
           cp -r build/Build/Products/Release-iphoneos/studentos.app build/ipa/
           cd build/ipa && zip -r StudentOS.ipa studentos.app
     artifacts:
+      - android/app/build/outputs/**/*.apk
       - build/ipa/StudentOS.ipa
     publishing:
       email:
