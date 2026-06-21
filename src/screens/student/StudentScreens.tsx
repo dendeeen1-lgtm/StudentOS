@@ -200,7 +200,7 @@ export const ScanScreen: React.FC<{ navigation: any; profile: any }> = ({ naviga
 };
 
 // ─── Excused Form ─────────────────────────────────────────────────────────────
-// ExcusedFormScreen moved to ExcusedFormScreen.tsx
+export const ExcusedFormScreen: React.FC<{ navigation: any; profile: any; route: any }> = ({ navigation, profile, route }) => {
   const { payload, session } = route.params;
   const [explanation, setExplanation] = useState('');
   const [photoUri, setPhotoUri] = useState<string | null>(null);

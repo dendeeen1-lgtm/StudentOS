@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User } from 'firebase/auth';
+import { getReactNativePersistence, initializeAuth } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { onAuthChanged, getUserProfile } from '../services/auth.service';
 import { StudentProfile, AdviserProfile, ParentProfile } from '../constants/types';
 

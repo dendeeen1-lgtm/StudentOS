@@ -1,12 +1,12 @@
-import 'react-native-gesture-handler';
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { Colors, FontSize, FontWeight, UserRole } from '../constants';
 import { useAuth } from '../hooks/useAuth';
+import { LoadingScreen } from '../screens/auth/LoadingScreen';
 import { WelcomeScreen } from '../screens/auth/WelcomeScreen';
 import { LoginScreen, RegisterStudentScreen, RegisterParentScreen, PendingApprovalScreen } from '../screens/auth/AuthScreens';
 import { RegisterAdviserScreen } from '../screens/auth/RegisterAdviserScreen';
@@ -129,9 +129,9 @@ const AuthNavigator = () => (
   <Stack.Navigator screenOptions={screenOptions}>
     <Stack.Screen name="Welcome" component={WelcomeScreen} />
     <Stack.Screen name="Login" component={LoginScreen} />
+    <Stack.Screen name="RegisterAdviser" component={RegisterAdviserScreen} />
     <Stack.Screen name="RegisterStudent" component={RegisterStudentScreen} />
     <Stack.Screen name="RegisterParent" component={RegisterParentScreen} />
-    <Stack.Screen name="RegisterAdviser" component={RegisterAdviserScreen} />
     <Stack.Screen name="PendingApproval" component={PendingApprovalScreen} />
   </Stack.Navigator>
 );
@@ -166,14 +166,7 @@ const ParentStack: React.FC<{ profile: any }> = ({ profile }) => (
 export const RootNavigator: React.FC = () => {
   const { user, profile, loading } = useAuth();
 
-  if (loading) {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={styles.loadingText}>StudentOS</Text>
-      </View>
-    );
-  }
+  if (loading) return <LoadingScreen />;
 
   const getNavigator = () => {
     if (!user || !profile) return <AuthNavigator />;
@@ -194,7 +187,4 @@ export const RootNavigator: React.FC = () => {
   return <NavigationContainer>{getNavigator()}</NavigationContainer>;
 };
 
-const styles = StyleSheet.create({
-  loading: { flex: 1, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center', gap: 16 },
-  loadingText: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.textPrimary },
-});
+const styles = StyleSheet.create({});
